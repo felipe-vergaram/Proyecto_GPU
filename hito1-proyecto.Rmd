@@ -1,0 +1,210 @@
+---
+title: "Hito 1: Precios GPU's respecto a cryptocurrency historica"
+author: "Matías Alegría, Rodrigo Guerra, Rodrigo Mella, Miguel Morales, Felipe Vergara"
+date: "Abril 2021"
+output:
+  html_document:
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+  pdf_document:
+    toc: yes
+    
+
+
+---
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+```
+#Cargando datasets de cryptocurrency a utilizar
+
+```{r}
+bitcoin <- read.csv("dataset/coin_Bitcoin.csv", header = T)
+ethereum <- read.csv("dataset/coin_Ethereum.csv", header = T)
+litecoin <- read.csv("dataset/coin_Litecoin.csv", header = T)
+cardano <- read.csv("dataset/coin_Cardano.csv", header = T)
+
+bitcoin$Date <- NULL
+ethereum$Date <- NULL
+litecoin$Date <- NULL
+cardano$Date <- NULL
+
+```
+
+#Agregando columna date para emparejar con GPU y ordenando
+
+```{r}
+bitcoin$date <- as.Date(with(bitcoin, paste(Year, Month, Day, sep="-")), "%Y-%m-%d")
+bitcoin <- bitcoin[order(bitcoin$date, decreasing = FALSE),]
+
+ethereum$date <- as.Date(with(ethereum, paste(Year, Month, Day, sep="-")), "%Y-%m-%d")
+ethereum <- ethereum[order(ethereum$date, decreasing = FALSE),]
+
+litecoin$date <- as.Date(with(litecoin, paste(Year, Month, Day, sep="-")), "%Y-%m-%d")
+litecoin <- litecoin[order(litecoin$date, decreasing = FALSE),]
+
+cardano$date <- as.Date(with(cardano, paste(Year, Month, Day, sep="-")), "%Y-%m-%d")
+cardano <- cardano[order(cardano$date, decreasing = FALSE),]
+
+```
+
+
+#Creando dataset con todas las cryptomonedas juntas
+
+```{r}
+cryptocurrency <- rbind(bitcoin, cardano, ethereum, litecoin)
+cryptocurrency <- cryptocurrency[order( cryptocurrency[,"date"] ),]
+```
+
+#Graficando evolución en el tiempo de las cryptos
+
+```{r}
+ggplot(data = cryptocurrency, aes(x=date, y=log10(Close), by=Symbol, color=Symbol)) +
+  ggtitle("Evolución de valor de cierre de Cryptocurrency en el tiempo")+
+  ylab("Close price Log10(USD) ")+
+  scale_color_manual(values = c("#2E36FF","#ffcc00" , "#A003FE" ,"#999966" ))+
+  geom_line()
+```
+```{r}
+ggplot(data = cryptocurrency, aes(x=date, y=Close, by=Symbol, color=Symbol)) +
+  ggtitle("Evolución de valor de cierre de Cryptocurrency en el tiempo")+
+  ylab("Close price (USD)")+
+  scale_color_manual(values = c("#2E36FF","#ffcc00" , "#A003FE" ,"#999966" ))+
+  geom_line()
+```
+#Graficando Capitalización de mercado (USD) a la fecha 
+
+```{r}
+ggplot(data = cryptocurrency, aes(x=date, y=Marketcap, by=Symbol, color=Symbol)) +
+  ggtitle("Evolución de capitalización de mercado de Cryptocurrency en el tiempo")+
+  ylab("Market Cap. (USD) ")+
+  scale_color_manual(values = c("#2E36FF","#ffcc00" , "#A003FE" ,"#999966" ))+
+  geom_line()
+```
+
+#Graficando volumen tranzado en 24 hrs de mercado (USD) a la fecha 
+
+```{r}
+ggplot(data = cryptocurrency, aes(x=date, y=Volume, by=Symbol, color=Symbol)) +
+  ggtitle("Volumen tranzado cada 24 hrs de Cryptocurrency a la fecha")+
+  ylab("Volume (USD) ")+
+  scale_color_manual(values = c("#2E36FF","#ffcc00" , "#A003FE" ,"#999966" ))+
+  geom_line()
+```
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#Cargando datasets de GPU's 
+
+```{r}
+GPU_PROD <- read.csv("dataset/DIM_GPU_PROD.csv", header = T)
+GPU_MERCHANT <- read.csv("dataset/DIM_MERCHANT.csv", header = T)
+GPU_REGION <- read.csv("dataset/DIM_REGION.csv", header = T)
+GPU_TIME <- read.csv("dataset/DIM_TIME.csv", header = T)
+GPU_PRICE <- read.csv("dataset/FACT_GPU_PRICE.csv", header = T)
+```
+
+
+#Filtrando ejemplares por U.S  y Join con df Time para obtener columnas de año, mes y día. IMPORTANTE: join con TIME produce oversampling con N.A's.
+
+```{r}
+GPU_PRICE_US <- GPU_PRICE[GPU_PRICE$RegionId == GPU_REGION[GPU_REGION$Code == "us","Id"], c("ProdId", "TimeId", "MerchantId", "Price_USD")]
+GPU_PRICE_US <- full_join(GPU_PRICE_US, GPU_TIME, by=c("TimeId" = "Id"))
+```
+
+#Sobrescribiendo df para obtener 1 columna para fecha y ordenando.
+
+```{r}
+GPU_PRICE_US$date <- as.Date(with(GPU_PRICE_US, paste(Year, Month, Day, sep="-")), "%Y-%m-%d")
+GPU_PRICE_US <-GPU_PRICE_US[order(GPU_PRICE_US$TimeId, decreasing = FALSE), c("ProdId", "MerchantId", "Price_USD", "date")]
+```
+
+#Join con GPU_PROD y filtrando columnas relevantes.
+
+```{r}
+GPU_PRICE_US <- full_join(GPU_PRICE_US, GPU_PROD, by=c("ProdId" = "Id"))
+GPU_PRICE_US <- na.omit(GPU_PRICE_US)
+```
+
+#Join con GPU_MERCHANT
+```{r}
+GPU_PRICE_US <- full_join(GPU_PRICE_US, GPU_MERCHANT, by=c("MerchantId" = "Id"))
+```
+
+#Dataframe limpio para GPU's y precio
+```{r}
+GPU_CLEAN <- GPU_PRICE_US[,c("Processor_Manufacturer", "Processor", "date", "GPU_Manufacturer", "Merchant","Memory_Type", "Memory_Capacity", "Price_USD")]
+# Sort by column index [1] then [3]
+GPU_CLEAN <- GPU_CLEAN[order( GPU_CLEAN[,"Processor"], GPU_CLEAN[,"date"] ),]
+GPU_CLEAN <- na.omit(GPU_CLEAN)
+```
+
+#------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+#Summary de GPU_CLEAN
+
+```{r}
+summary(GPU_CLEAN)
+```
+
+```{r}
+Frec_Proc <- as.data.frame(table(GPU_CLEAN$Processor))
+Frec_Proc[order(Frec_Proc$Freq, decreasing = TRUE),]
+```
+
+```{r}
+
+Frec_Proc_Man <- as.data.frame(table(GPU_CLEAN$Processor_Manufacturer))
+Frec_Proc_Man[order(Frec_Proc_Man$Freq, decreasing = TRUE),]
+```
+
+```{r}
+Frec_Man <- as.data.frame(table(GPU_CLEAN$GPU_Manufacturer))
+Frec_Man[order(Frec_Man$Freq, decreasing = TRUE),]
+```
+
+```{r}
+Frec_Merch <- as.data.frame(table(GPU_CLEAN$Merchant))
+Frec_Merch[order(Frec_Merch$Freq, decreasing = TRUE),]
+```
+
+```{r}
+
+Frec_Mem <- as.data.frame(table(GPU_CLEAN$Memory_Type))
+Frec_Mem[order(Frec_Mem$Freq, decreasing = TRUE),]
+```
+
+
+#Evolución total de las dos GPUs más usadas
+```{r}
+ggplot(data = GPU_CLEAN[GPU_CLEAN$Processor == c("Radeon RX 580", "GeForce 1070"),], aes(x=date, y=Price_USD, by=Processor, color=Processor)) +
+  ggtitle("Evolución de precios en GPU en el tiempo")+
+  ylab("Price (USD)")+
+  geom_line()
+```
+
+```{r}
+ggplot(data = GPU_CLEAN[GPU_CLEAN$Processor == c("Radeon RX 580", "GeForce 1070") & GPU_CLEAN$Merchant == "Newegg",], aes(x=date, y=Price_USD, by=Processor, color=Processor)) +
+  ggtitle("Evolución de precios en GPU en el tiempo")+
+  ylab("Price (USD)")+
+  geom_line()
+```
+
+#Usaremos todas las GPU
+
+```{r}
+GPU_MEAN <- GPU_CLEAN %>%
+  group_by(date, Processor_Manufacturer) %>%
+    summarize(mean = mean(Price_USD))
+
+ggplot(data = GPU_MEAN, aes(x=date, y=mean, by=Processor_Manufacturer, color=Processor_Manufacturer)) +
+  ggtitle("Evolución de precios en GPU en el tiempo")+
+  ylab("Price (USD)")+
+  scale_color_manual(values = c("#FF0000","#00CC00"))+
+  geom_line()
+```
