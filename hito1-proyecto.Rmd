@@ -9,16 +9,25 @@ output:
     toc: yes
   pdf_document:
     toc: yes
-    
-
-
 ---
+# Introducción
+
+Las criptomonedas, corresponden a un tipo de moneda digital, donde la producción de las mismas, implica la resolución de problemas matemáticos basados en criptografía. El término minar este tipo de monedas, se refiere al conjunto de procesos necesarios para validar y procesar transacciones de una criptomoneda.
+
+En los últimos años la industria de las criptomonedas ha experimentado un alza en sus precios, lo que a su vez, incide en los precios de las GPUs, componente más importante al momento de minar estas criptomonedas. Hoy en día ha quedado manifestada la escasez de tarjetas gráficas de forma simultanea al boom de las criptomonedas, por lo que en este trabajo se estudiará la relación que existe entre el alza del precio de criptomonedas y la escasez de las GPU a través del precio de estas.
+
+Para analizar los puntos anteriores, se eligen 4 criptomonedas, del dataset 'Cryptocurrency Historical Prices', las que corresponden a Bitcoin, Ethereum, Litecoin y Cardano, entre los años 2013 y 2021. Por otra parte, el dataset 'Ethereum Effect impact on PC parts prices', muestra las variaciones de precio de diferentes partes de computador en el tiempo, además proporciona información de las empresas que fabrican estos componentes y sus respectivos modelos, entre los años 2016 y 2018. Este reporte se enfoca en las GPUs de Estados Unidos.
+
+# Exploración de datos
+
+Librerías utilizadas
+
 ```{r}
 library(dplyr)
 library(ggplot2)
 library(tidyverse)
 ```
-#Cargando datasets de cryptocurrency a utilizar
+Primero se cargan los datos de las 4 criptomonedas a utilizar.
 
 ```{r}
 bitcoin <- read.csv("dataset/coin_Bitcoin.csv", header = T)
@@ -33,7 +42,7 @@ cardano$Date <- NULL
 
 ```
 
-#Agregando columna date para emparejar con GPU y ordenando
+Además, transformando las fechas para que puedan ser compatibles con el otro dataset en formato Año-Mes-Día.
 
 ```{r}
 bitcoin$date <- as.Date(with(bitcoin, paste(Year, Month, Day, sep="-")), "%Y-%m-%d")
@@ -51,14 +60,14 @@ cardano <- cardano[order(cardano$date, decreasing = FALSE),]
 ```
 
 
-#Creando dataset con todas las cryptomonedas juntas
+Creando dataset con todas las cryptomonedas juntas
 
 ```{r}
 cryptocurrency <- rbind(bitcoin, cardano, ethereum, litecoin)
 cryptocurrency <- cryptocurrency[order( cryptocurrency[,"date"] ),]
 ```
 
-#Graficando evolución en el tiempo de las cryptos
+Al graficar los valores de cierre de las 4 criptomonedas, en escala logarítmica, se observa el precio de cierre en escala logarítmica a lo largo del tiempo. El precio de cierre corresponde al último nivel en el que se negoció cierto activo en un día determinado.
 
 ```{r}
 ggplot(data = cryptocurrency, aes(x=date, y=log10(Close), by=Symbol, color=Symbol)) +
@@ -67,6 +76,8 @@ ggplot(data = cryptocurrency, aes(x=date, y=log10(Close), by=Symbol, color=Symbo
   scale_color_manual(values = c("#2E36FF","#ffcc00" , "#A003FE" ,"#999966" ))+
   geom_line()
 ```
+
+Al observar los mismos precios de cierre en escala real, se observa que el bitcoin experimenta 2 subidas explosivas de precio, uno en los años 2018 y otra a finales del año 2020. Las otras criptomonedas, experimentan subidas, con menor rango.
 ```{r}
 ggplot(data = cryptocurrency, aes(x=date, y=Close, by=Symbol, color=Symbol)) +
   ggtitle("Evolución de valor de cierre de Cryptocurrency en el tiempo")+
@@ -74,7 +85,9 @@ ggplot(data = cryptocurrency, aes(x=date, y=Close, by=Symbol, color=Symbol)) +
   scale_color_manual(values = c("#2E36FF","#ffcc00" , "#A003FE" ,"#999966" ))+
   geom_line()
 ```
-#Graficando Capitalización de mercado (USD) a la fecha 
+
+
+En cuanto a la capitalización, en este contexto, corresponde a la cantidad de monedas disponibles. Esto es calculando la multiplicación del total de monedas por el precio de una sola moneda en ese momento.
 
 ```{r}
 ggplot(data = cryptocurrency, aes(x=date, y=Marketcap, by=Symbol, color=Symbol)) +
@@ -84,7 +97,7 @@ ggplot(data = cryptocurrency, aes(x=date, y=Marketcap, by=Symbol, color=Symbol))
   geom_line()
 ```
 
-#Graficando volumen tranzado en 24 hrs de mercado (USD) a la fecha 
+El volumen de una moneda corresponde a la cantidad de monedas que han sido negociadas a lo largo de cada día.
 
 ```{r}
 ggplot(data = cryptocurrency, aes(x=date, y=Volume, by=Symbol, color=Symbol)) +
@@ -94,9 +107,8 @@ ggplot(data = cryptocurrency, aes(x=date, y=Volume, by=Symbol, color=Symbol)) +
   geom_line()
 ```
 
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-#Cargando datasets de GPU's 
+Por otra parte, de la exploración de datos de las GPUs primero se unen tablas, se cambia la forma de la fecha a Año-Mes-Día, se eliminan las columnas irrelevantes para el tema, y las celdas sin información.
 
 ```{r}
 GPU_PROD <- read.csv("dataset/DIM_GPU_PROD.csv", header = T)
@@ -107,33 +119,33 @@ GPU_PRICE <- read.csv("dataset/FACT_GPU_PRICE.csv", header = T)
 ```
 
 
-#Filtrando ejemplares por U.S  y Join con df Time para obtener columnas de año, mes y día. IMPORTANTE: join con TIME produce oversampling con N.A's.
+Filtrando ejemplares por U.S (país) y Join con dataframe Time para obtener columnas de año, mes y día. IMPORTANTE: join con TIME produce oversampling con N.A's.
 
 ```{r}
 GPU_PRICE_US <- GPU_PRICE[GPU_PRICE$RegionId == GPU_REGION[GPU_REGION$Code == "us","Id"], c("ProdId", "TimeId", "MerchantId", "Price_USD")]
 GPU_PRICE_US <- full_join(GPU_PRICE_US, GPU_TIME, by=c("TimeId" = "Id"))
 ```
 
-#Sobrescribiendo df para obtener 1 columna para fecha y ordenando.
+Sobrescribiendo dataframe para obtener 1 columna para fecha y ordenando.
 
 ```{r}
 GPU_PRICE_US$date <- as.Date(with(GPU_PRICE_US, paste(Year, Month, Day, sep="-")), "%Y-%m-%d")
 GPU_PRICE_US <-GPU_PRICE_US[order(GPU_PRICE_US$TimeId, decreasing = FALSE), c("ProdId", "MerchantId", "Price_USD", "date")]
 ```
 
-#Join con GPU_PROD y filtrando columnas relevantes.
+Join con GPU_PROD y filtrando columnas relevantes, GPU_PROD nos proporciona información sobre los modelos de tarjetas gráficas.
 
 ```{r}
 GPU_PRICE_US <- full_join(GPU_PRICE_US, GPU_PROD, by=c("ProdId" = "Id"))
 GPU_PRICE_US <- na.omit(GPU_PRICE_US)
 ```
 
-#Join con GPU_MERCHANT
+Join con GPU_MERCHANT, correspondiente a tiendas distribuidoras.
 ```{r}
 GPU_PRICE_US <- full_join(GPU_PRICE_US, GPU_MERCHANT, by=c("MerchantId" = "Id"))
 ```
 
-#Dataframe limpio para GPU's y precio
+Dataframe limpio para GPU's y precio
 ```{r}
 GPU_CLEAN <- GPU_PRICE_US[,c("Processor_Manufacturer", "Processor", "date", "GPU_Manufacturer", "Merchant","Memory_Type", "Memory_Capacity", "Price_USD")]
 # Sort by column index [1] then [3]
@@ -141,38 +153,33 @@ GPU_CLEAN <- GPU_CLEAN[order( GPU_CLEAN[,"Processor"], GPU_CLEAN[,"date"] ),]
 GPU_CLEAN <- na.omit(GPU_CLEAN)
 ```
 
-#------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-
-#Summary de GPU_CLEAN
+A continuación se muestra un resumen con estadística de cada columna obtenida:
 
 ```{r}
 summary(GPU_CLEAN)
 ```
-
+Para inspeccionar qué modelos de GPU son los que tienen más importancia en el mercado se tiene lo siguiente:
 ```{r}
 Frec_Proc <- as.data.frame(table(GPU_CLEAN$Processor))
-Frec_Proc[order(Frec_Proc$Freq, decreasing = TRUE),]
+head(Frec_Proc[order(Frec_Proc$Freq, decreasing = TRUE),])
 ```
-
+Por otra parte, las veces que aparece cada fabricante en el dataset son las siguientes:
 ```{r}
 
 Frec_Proc_Man <- as.data.frame(table(GPU_CLEAN$Processor_Manufacturer))
 Frec_Proc_Man[order(Frec_Proc_Man$Freq, decreasing = TRUE),]
 ```
-
+Los principales ensambladoras de tarjetas gráficas licenciadas son:
 ```{r}
 Frec_Man <- as.data.frame(table(GPU_CLEAN$GPU_Manufacturer))
 Frec_Man[order(Frec_Man$Freq, decreasing = TRUE),]
 ```
-
+Los principales comerciantes de GPUs son los siguientes (U.S):
 ```{r}
 Frec_Merch <- as.data.frame(table(GPU_CLEAN$Merchant))
 Frec_Merch[order(Frec_Merch$Freq, decreasing = TRUE),]
 ```
-
+Los tipos de memorias más comunes presentes en el dataset son:
 ```{r}
 
 Frec_Mem <- as.data.frame(table(GPU_CLEAN$Memory_Type))
@@ -180,24 +187,28 @@ Frec_Mem[order(Frec_Mem$Freq, decreasing = TRUE),]
 ```
 
 
-#Evolución total de las dos GPUs más usadas
+Evolución de precio en el tiempo de dos de los modelos más reconocidos para minería de criptomonedas.
 ```{r}
 ggplot(data = GPU_CLEAN[GPU_CLEAN$Processor == c("Radeon RX 580", "GeForce 1070"),], aes(x=date, y=Price_USD, by=Processor, color=Processor)) +
   ggtitle("Evolución de precios en GPU en el tiempo")+
   ylab("Price (USD)")+
+  scale_color_manual(values = c("#00CC00","#FF0000"))+
   geom_line()
 ```
+
+Misma evolución de precio pero sólo considerando la tienda Newegg, la más frecuente.
 
 ```{r}
 ggplot(data = GPU_CLEAN[GPU_CLEAN$Processor == c("Radeon RX 580", "GeForce 1070") & GPU_CLEAN$Merchant == "Newegg",], aes(x=date, y=Price_USD, by=Processor, color=Processor)) +
   ggtitle("Evolución de precios en GPU en el tiempo")+
   ylab("Price (USD)")+
+  scale_color_manual(values = c("#00CC00","#FF0000"))+
   geom_line()
 ```
 
-#Usaremos todas las GPU
+Evolución de precios de modelos GPU en promedio por día, considera la separación de fabricante.
 
-```{r}
+```{r warning=FALSE, message=FALSE}
 GPU_MEAN <- GPU_CLEAN %>%
   group_by(date, Processor_Manufacturer) %>%
     summarize(mean = mean(Price_USD))
@@ -208,3 +219,32 @@ ggplot(data = GPU_MEAN, aes(x=date, y=mean, by=Processor_Manufacturer, color=Pro
   scale_color_manual(values = c("#FF0000","#00CC00"))+
   geom_line()
 ```
+
+Finalmente podemos analizar la dispersión de precios para cuatro modelos GPU muy cotizados en la industria de minería de criptomonedas, estas son la GeForce 1050 Ti, GeForce 1060, Radeon RX 570 y Radeon RX 480.
+
+```{r}
+ggplot(data = GPU_CLEAN[GPU_CLEAN$Processor == c("Radeon RX 570", "Radeon RX 480", "GeForce 1060", "GeForce 1050 Ti"),], aes(x=Processor, y=Price_USD, color=Processor)) +
+  ggtitle("Evolución de precios en GPU en el tiempo")+
+  ylab("Price (USD)")+
+  scale_color_manual(values = c("#00CC00","#00CC00","#FF0000","#FF0000"))+
+  geom_boxplot()
+```
+
+# Preguntas y problemas
+## Preguntas
+
+  * ¿Existe relación entre precios de criptomonedas y precios de GPU?
+  * Si lo anterior es cierto ¿Cuál es el delay o latencia entre el alza de precios de las GPUs y las criptomonedas?
+  * ¿Qué criptomoneda se relaciona mayormente con los precios de GPU? ¿Y Cuál menos?
+  * ¿Existen GPU que vean su precio afectado de forma distinta respecto al alza en precio de criptomonedas?
+  * ¿Es distinto el alza de precio de criptomonedas minables y no minables respecto al alza de precios de GPU?
+  * Según los datos extraídos ¿Las GPUs usadas para minar coinciden con las señaladas por los datos? 
+  * ¿Qué Manufacturador tiene mayores alzas y precios en sus GPUs?
+  * ¿Existen diferencias entre alzas de precios entre NVIDIA y AMD?
+  * ¿La capacidad de memoria de las GPUs influye en las alzas de precio?
+  
+## Problemas
+
+Al momento de realizar la exploración de datos surgieron varios problemas asociados a la manipulación de data y al llenado de datos. El primer problema nace de la necesidad de aunar los datos en una tabla, para facilitar su análisis, dado que la data relacionada a las GPUs se encontraba dividida en diversas sub-tablas. Otro inconveniente que surgió es que los datos extraídos corresponden a dos conjuntos de datos que no se encuentran relacionados de forma directa entre sí. Uno es el dataset correspondiente a las GPUs y el otro corresponde al que contiene la información de las criptomonedas. Sin embargo, ambos conjuntos de datos comparten un atributo temporal (fecha) con el cual se pueden relacionar, por lo que inicialmente se hizo una limpieza de las tablas por medio de excel para obtener un mismo formato de fecha: se modificaron las fechas de forma que se tuviera en las tablas los atributos año, mes y día por separado. Posteriormente, al empezar a hacer los left-join y reemplazar el timeid, se descubrió que resultaba más fácil filtrar con las fechas en el formato Y-M-D que en el formato actual, por lo que se retransformo las columnas de fecha a una sola. Finalmente, cabe mencionar que el dataframe de tiempo abarca un intervalo de tiempo más grande que el de GPUs dado que esta hecho en base al ethereum. Este hecho genero un montón de filas llenas de NaN que debieron ser eliminadas.
+
+Queda como pendiente el poder encontrar, si es que existe, un dataset con modelos de GPU y sus valores de mercado más actualizado, esto con el fin de poder analizar el "boom" más reciente y más acentuado en la historia de las criptomonedas, ocurrido entre mitad de 2020 y la actualidad. Por lo anterior es que el análisis de información se acota entre los años 2016 y 2018.
